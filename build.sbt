@@ -8,6 +8,8 @@ scalaVersion := "2.10.4"
 
 libraryDependencies ++= Seq(
   "postgresql" % "postgresql" % "9.1-901-1.jdbc4",
+  "com.twitter" % "parquet-column" % "1.6.0rc3",
+  "com.twitter" % "parquet-hadoop" % "1.6.0rc3",
   "org.specs2" %% "specs2" % "2.3.12" % "test"
 )
 
