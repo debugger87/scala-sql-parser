@@ -243,7 +243,6 @@ object SQLParser extends App {
             case WildcardProjection =>
               set += "*"
           }
-
         }
 
         Some(set.toList)
