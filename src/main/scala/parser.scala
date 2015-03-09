@@ -1,5 +1,6 @@
 package com.stephentu.sql
 
+import scala.collection.mutable
 import scala.util.matching.Regex
 
 import scala.util.parsing.combinator._
@@ -220,6 +221,35 @@ class SQLParser extends StandardTokenParsers {
     phrase(select)(new lexical.Scanner(sql)) match {
       case Success(r, q) => Option(r)
       case x => println(x); None
+    }
+  }
+}
+
+object SQLParser extends App {
+  private val parser = new SQLParser
+
+  def listColumn(sql: String): Option[List[String]] = {
+    val r = parser.parse(sql)
+    r match {
+      case Some(stmt) => {
+        val set = mutable.HashSet[String]()
+
+        stmt.ctx.projections.foreach { pt: ProjectionType =>
+          pt match {
+            case n: NamedProjection =>
+              n.expr.gatherFields.toList.foreach { f: (FieldIdent, Boolean) =>
+                set += f._1.name
+              }
+            case WildcardProjection =>
+              set += "*"
+          }
+
+        }
+
+        Some(set.toList)
+      }
+
+      case None => None
     }
   }
 }
