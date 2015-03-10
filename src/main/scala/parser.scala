@@ -225,7 +225,7 @@ class SQLParser extends StandardTokenParsers {
   }
 }
 
-object SQLParser {
+object SQLParser extends {
   private val parser = new SQLParser
   private val emptyList = List[(Option[String], String)]()
 
@@ -233,7 +233,7 @@ object SQLParser {
     val r = parser.parse(sql)
     r match {
       case Some(stmt) => {
-        val defaultQualifier = stmt.relations.map(seq => seq(0) match {case TableRelationAST(name, _, _) => name})
+        val defaultQualifier = stmt.relations.map(seq => seq(0) match {case TableRelationAST(name, _, _) => name; case _ => ""})
         Some(extractFromSelectStmt(stmt).toSet[(Option[String], String)].toList.map(k => if (k._1.isDefined) k else (defaultQualifier, k._2)))
       }
 
@@ -249,9 +249,19 @@ object SQLParser {
         case StarProj(_) => List((None, "*"))
       }
     }.flatten.toList :::
+    stmt.relations.map(rs => rs.map(r => extractFromSqlRelation(r)).flatten.toList).getOrElse(emptyList) :::
     stmt.filter.map(extractFromExpr(_)).getOrElse(emptyList) :::
     stmt.groupBy.map(_.keys.map(k => extractFromExpr(k)).flatten.toList).getOrElse(emptyList) :::
     stmt.orderBy.map(_.keys.map(k => extractFromExpr(k._1)).flatten.toList).getOrElse(emptyList)
+  }
+
+  def extractFromSqlRelation(relation: SqlRelation): List[(Option[String], String)] = {
+    relation match {
+      case SubqueryRelationAST(subquery, _, _) => extractFromSelectStmt(subquery)
+      case JoinRelation(left, right, _, clause, _) =>
+        extractFromSqlRelation(left) ::: extractFromSqlRelation(right) ::: extractFromExpr(clause)
+      case _ => emptyList
+    }
   }
 
   def extractFromExpr(expr: SqlExpr): List[(Option[String], String)] = {
