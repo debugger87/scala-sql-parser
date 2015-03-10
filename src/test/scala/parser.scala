@@ -792,5 +792,13 @@ class SQLParserSpec extends Specification {
       val r = parser.parse(Queries.q22)
       r should beSome
     }
+
+    "list column of query1" in {
+      SQLParser.listColumn(Queries.q1) should beSome
+    }
+
+    "list column of query2" in {
+      SQLParser.listColumn(Queries.q2) should beSome
+    }
   }
 }

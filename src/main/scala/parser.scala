@@ -225,30 +225,71 @@ class SQLParser extends StandardTokenParsers {
   }
 }
 
-object SQLParser extends App {
+object SQLParser {
   private val parser = new SQLParser
+  private val emptyList = List[(Option[String], String)]()
 
-  def listColumn(sql: String): Option[List[String]] = {
+  def listColumn(sql: String): Option[List[(Option[String], String)]] = {
     val r = parser.parse(sql)
     r match {
       case Some(stmt) => {
-        val set = mutable.HashSet[String]()
-
-        stmt.ctx.projections.foreach { pt: ProjectionType =>
-          pt match {
-            case n: NamedProjection =>
-              n.expr.gatherFields.toList.foreach { f: (FieldIdent, Boolean) =>
-                set += f._1.name
-              }
-            case WildcardProjection =>
-              set += "*"
-          }
-        }
-
-        Some(set.toList)
+        val defaultQualifier = stmt.relations.map(seq => seq(0) match {case TableRelationAST(name, _, _) => name})
+        Some(extractFromSelectStmt(stmt).toSet[(Option[String], String)].toList.map(k => if (k._1.isDefined) k else (defaultQualifier, k._2)))
       }
 
       case None => None
+    }
+  }
+
+  def extractFromSelectStmt(stmt: SelectStmt): List[(Option[String], String)] = {
+
+    stmt.projections.map { proj: SqlProj =>
+      proj match {
+        case ExprProj(expr, _, _) => extractFromExpr(expr)
+        case StarProj(_) => List((None, "*"))
+      }
+    }.flatten.toList :::
+    stmt.filter.map(extractFromExpr(_)).getOrElse(emptyList) :::
+    stmt.groupBy.map(_.keys.map(k => extractFromExpr(k)).flatten.toList).getOrElse(emptyList) :::
+    stmt.orderBy.map(_.keys.map(k => extractFromExpr(k._1)).flatten.toList).getOrElse(emptyList)
+  }
+
+  def extractFromExpr(expr: SqlExpr): List[(Option[String], String)] = {
+    expr match {
+      case FieldIdent(qualifier, name, _, _) => List((qualifier, name))
+      case binop: Binop =>
+        extractFromExpr(binop.lhs) ::: extractFromExpr(binop.rhs)
+      case unop: Unop =>
+        extractFromExpr(unop.expr)
+      case In(elem, set, _, _) =>
+        extractFromExpr(elem) ::: set.flatMap(extractFromExpr(_)).toList
+      case Exists(select, _) =>
+        extractFromSelectStmt(select.subquery)
+      case Subselect(stmt, _) =>
+        extractFromSelectStmt(stmt)
+      case sqlFun: SqlFunction =>
+        sqlFun.args.map(extractFromExpr(_)).flatten.toList
+      case sqlAgg: SqlAgg =>
+        sqlAgg match {
+          case CountStar(_) => emptyList
+          case CountExpr(e, _, _) => extractFromExpr(e)
+          case Sum(e, _, _) => extractFromExpr(e)
+          case Avg(e, _, _) => extractFromExpr(e)
+          case Min(e, _) => extractFromExpr(e)
+          case Max(e, _) => extractFromExpr(e)
+          case GroupConcat(e, _, _) => extractFromExpr(e)
+          case AggCall(_, args, _) =>
+            args.map(extractFromExpr(_)).flatten.toList
+        }
+      case CaseExpr(e, cases, default, _) =>
+        extractFromExpr(e) :::
+        cases.map(c => extractFromExpr(c.cond) ::: extractFromExpr(c.expr)).flatten.toList :::
+        default.map(extractFromExpr(_)).getOrElse(emptyList)
+      case CaseWhenExpr(cases, default, _) =>
+        cases.map(c => extractFromExpr(c.cond) ::: extractFromExpr(c.expr)).flatten.toList :::
+        default.map(extractFromExpr(_)).getOrElse(emptyList)
+      case _ =>
+        emptyList
     }
   }
 }
