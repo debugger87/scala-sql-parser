@@ -225,7 +225,7 @@ class SQLParser extends StandardTokenParsers {
   }
 }
 
-object SQLParser extends {
+object SQLParser {
   private val parser = new SQLParser
   private val emptyList = List[(Option[String], String)]()
 
