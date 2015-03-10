@@ -233,7 +233,12 @@ object SQLParser {
     val r = parser.parse(sql)
     r match {
       case Some(stmt) => {
-        val defaultQualifier = stmt.relations.map(seq => seq(0) match {case TableRelationAST(name, _, _) => name; case _ => ""})
+        val defaultQualifier = stmt.relations.map {
+          seq => seq(0) match {
+            case TableRelationAST(name, _, _) => name
+            case _ => ""
+          }
+        }
         Some(extractFromSelectStmt(stmt).toSet[(Option[String], String)].toList.map(k => if (k._1.isDefined) k else (defaultQualifier, k._2)))
       }
 
