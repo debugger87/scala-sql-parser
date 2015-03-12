@@ -32,11 +32,8 @@ object ParquetResolver {
     }
 
     children
-      // Try any non-"_metadata" file first...
-      .find(_.getPath.getName != ParquetFileWriter.PARQUET_METADATA_FILE)
-      // ... and fallback to "_metadata" if no such file exists (which implies the Parquet file is
-      // empty, thus normally the "_metadata" file is expected to be fairly small).
-      .orElse(children.find(_.getPath.getName == ParquetFileWriter.PARQUET_METADATA_FILE))
+      // Only try the "_metadata" file
+      .find(_.getPath.getName == ParquetFileWriter.PARQUET_METADATA_FILE)
       .map(ParquetFileReader.readFooter(conf, _))
       .getOrElse(
         throw new IllegalArgumentException(s"Could not find Parquet metadata at path $path"))
