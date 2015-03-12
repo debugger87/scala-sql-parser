@@ -18,7 +18,8 @@ object Boot extends App {
   val appId = args(0)
   val sql = args(1)
   val sdf = new SimpleDateFormat("yyyy-MM-dd")
-  val hdfsBase = s"hdfs://hb3:8020/user/ubuntu/bigquery/${sdf.format(new Date().getTime)}/$appId"
+  val date = if (args.length == 3) args(2) else sdf.format(new Date().getTime)
+  val hdfsBase = s"hdfs://hb3:8020/user/ubuntu/bigquery/$date/$appId"
 
   Try (SQLParser.listColumns(sql)) match {
     case Success(res) =>
