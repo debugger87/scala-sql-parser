@@ -39,7 +39,7 @@ object ParquetResolver {
         throw new IllegalArgumentException(s"Could not find Parquet metadata at path $path"))
   }
 
-  def getTableColumnSize(tablePath: Path,
+  def getTableColumnSizes(tablePath: Path,
                          configuration: Option[Configuration]): Option[Map[String, Long]] = {
     Try {
       val metadata = readMetaData(tablePath, configuration)
