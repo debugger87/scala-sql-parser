@@ -18,22 +18,28 @@ object Boot extends App {
   val appId = args(0)
   val sql = args(1)
   val sdf = new SimpleDateFormat("yyyy-MM-dd")
-  val hdfsBase = s"hdfs://nameservice1/user/ubuntu/bigquery/${sdf.format(new Date().getTime)}/$appId"
+  val hdfsBase = s"hdfs://hb3:8020/user/ubuntu/bigquery/${sdf.format(new Date().getTime)}/$appId"
 
   Try (SQLParser.listColumns(sql)) match {
     case Success(res) =>
       res match {
         case Some(list) =>
-          val tableToColumns = list.filter(!_._1.isDefined).groupBy(x => x._1).map { y =>
+          val tableToColumns = list.filter(_._1.isDefined).groupBy(x => x._1).map { y =>
             (y._1, y._2.map(z => z._2).toSet)
           }
+
+          println(tableToColumns)
 
           val totalCost = tableToColumns.map { x =>
             val tableName = x._1.get
             val columns = x._2
             val path = new Path(s"$hdfsBase/$appId.$tableName")
-            val conf = Some(new Configuration())
+            val conf = new Configuration()
+            conf.set("fs.hdfs.impl", classOf[org.apache.hadoop.hdfs.DistributedFileSystem].getName)
+            conf.set("fs.file.impl", classOf[org.apache.hadoop.fs.LocalFileSystem].getName)
+
             val columnSizes = ParquetResolver.getTableColumnSizes(path, conf)
+            println(columnSizes)
             columnSizes.map { m =>
               columns.map(m(_)).sum
             }.getOrElse(0L)
@@ -47,6 +53,4 @@ object Boot extends App {
     case Failure(t) =>
       t.printStackTrace
   }
-
-
 }

@@ -1,9 +1,7 @@
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.hadoop.mapreduce.Job
 import parquet.hadoop.{ParquetFileReader, ParquetFileWriter}
 import parquet.hadoop.metadata.ParquetMetadata
-import parquet.hadoop.util.ContextUtil
 
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
@@ -14,12 +12,11 @@ import scala.util.{Failure, Success, Try}
 
 object ParquetResolver {
 
-  def readMetaData(origPath: Path, configuration: Option[Configuration]): ParquetMetadata = {
+  def readMetaData(origPath: Path, conf: Configuration): ParquetMetadata = {
     if (origPath == null) {
       throw new IllegalArgumentException("Unable to read Parquet metadata: path is null")
     }
-    val job = new Job()
-    val conf = configuration.getOrElse(ContextUtil.getConfiguration(job))
+
     val fs: FileSystem = origPath.getFileSystem(conf)
     if (fs == null) {
       throw new IllegalArgumentException(s"Incorrectly formatted Parquet metadata path $origPath")
@@ -40,9 +37,9 @@ object ParquetResolver {
   }
 
   def getTableColumnSizes(tablePath: Path,
-                         configuration: Option[Configuration]): Option[Map[String, Long]] = {
+                         conf: Configuration): Option[Map[String, Long]] = {
     Try {
-      val metadata = readMetaData(tablePath, configuration)
+      val metadata = readMetaData(tablePath, conf)
       val blocks = metadata.getBlocks.asScala
 
       val pairs = blocks.map { block =>
@@ -57,7 +54,9 @@ object ParquetResolver {
       }
     } match {
       case Success(res) => Some(res)
-      case Failure(t) => None
+      case Failure(t: Throwable) =>
+        t.printStackTrace
+        None
     }
   }
 }
