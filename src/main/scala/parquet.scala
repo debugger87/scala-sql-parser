@@ -5,6 +5,9 @@ import parquet.hadoop.{ParquetFileReader, ParquetFileWriter}
 import parquet.hadoop.metadata.ParquetMetadata
 import parquet.hadoop.util.ContextUtil
 
+import scala.collection.JavaConverters._
+import scala.util.{Failure, Success, Try}
+
 /**
  * Created by yangchaozhong on 3/12/15.
  */
@@ -37,5 +40,27 @@ object ParquetResolver {
       .map(ParquetFileReader.readFooter(conf, _))
       .getOrElse(
         throw new IllegalArgumentException(s"Could not find Parquet metadata at path $path"))
+  }
+
+  def getTableColumnSize(tablePath: Path,
+                         configuration: Option[Configuration]): Option[Map[String, Long]] = {
+    Try {
+      val metadata = readMetaData(tablePath, configuration)
+      val blocks = metadata.getBlocks.asScala
+
+      val pairs = blocks.map { block =>
+        val columns = block.getColumns.asScala
+        columns.map { column =>
+          (column.getPath.asScala.mkString("."), column.getTotalSize)
+        }
+      }.flatten
+
+      pairs.groupBy(_._1).map { x =>
+        (x._1, x._2.reduce(_._2 + _._2))
+      }.toMap
+    } match {
+      case Success(res) => Some(res)
+      case Failure(t) => None
+    }
   }
 }
