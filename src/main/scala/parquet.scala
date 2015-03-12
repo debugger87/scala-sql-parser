@@ -53,8 +53,8 @@ object ParquetResolver {
       }.flatten
 
       pairs.groupBy(_._1).map { x =>
-        (x._1, x._2.reduce(_._2 + _._2))
-      }.toMap
+        (x._1, x._2.map(y => y._2).reduce(_ + _))
+      }
     } match {
       case Success(res) => Some(res)
       case Failure(t) => None
