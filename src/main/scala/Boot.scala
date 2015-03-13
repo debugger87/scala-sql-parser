@@ -33,13 +33,16 @@ object Boot extends App {
 
           val totalCost = tableToColumns.map { x =>
             val tableName = x._1.get
-            val columns = x._2
+            var columns = x._2
             val path = new Path(s"$hdfsBase/$appId.$tableName")
             val conf = new Configuration()
             conf.set("fs.hdfs.impl", classOf[org.apache.hadoop.hdfs.DistributedFileSystem].getName)
             conf.set("fs.file.impl", classOf[org.apache.hadoop.fs.LocalFileSystem].getName)
 
             val columnSizes = ParquetResolver.getTableColumnSizes(path, conf)
+            if (columns.contains("*")) {
+              columns = columnSizes.map(_.keySet).getOrElse(Set[String]())
+            }
             println(columnSizes)
             columnSizes.map { m =>
               columns.map(m(_)).sum
