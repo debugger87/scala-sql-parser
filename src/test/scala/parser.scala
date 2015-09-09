@@ -794,11 +794,11 @@ class SQLParserSpec extends Specification {
     }
 
     "list column of query1" in {
-      SQLParser.listColumn(Queries.q1) should beSome
+      SQLParser.listColumns(Queries.q1) should beSome
     }
 
     "list column of query2" in {
-      SQLParser.listColumn(Queries.q2) should beSome
+      SQLParser.listColumns(Queries.q2) should beSome
     }
   }
 }

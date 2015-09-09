@@ -229,7 +229,7 @@ object SQLParser {
   private val parser = new SQLParser
   private val emptyList = List[(Option[String], String)]()
 
-  def listColumn(sql: String): Option[List[(Option[String], String)]] = {
+  def listColumns(sql: String): Option[List[(Option[String], String)]] = {
     val r = parser.parse(sql)
     r match {
       case Some(stmt) => {
